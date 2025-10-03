@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Extrusion Die Cost Estimator</title>
+  <meta name="description" content="Quick, vendor-ready budget estimate for plastic extrusion dies using a simple parametric model." />
+  <style>
+    :root {
+      --bg: #0f172a;          /* slate-900 */
+      --panel: #111827;       /* gray-900 */
+      --accent: #60a5fa;      /* blue-400 */
+      --accent-2: #34d399;    /* emerald-400 */
+      --text: #e5e7eb;        /* gray-200 */
+      --muted: #94a3b8;       /* slate-400 */
+      --warn: #f59e0b;        /* amber-500 */
+      --danger: #ef4444;      /* red-500 */
+      --ok: #10b981;          /* emerald-500 */
+      --card: #0b1220;        /* custom */
+      --border: #1f2937;      /* gray-800 */
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
+      color: var(--text); background: radial-gradient(1200px 800px at 20% 0%, #0b1220, var(--bg));
+      min-height: 100vh;
+    }
+    header { padding: 28px 20px 8px; text-align: center; }
+    header h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.3px; }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .container { max-width: 1100px; margin: 20px auto 60px; padding: 0 16px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 960px){ .grid { grid-template-columns: 1.1fr 0.9fr; } }
+
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+            border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+    .card h2 { margin: 0 0 12px; font-size: 18px; color: #fff; }
+
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 14px; }
+    @media (min-width: 680px){ .row.cols-2 { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 680px){ .row.cols-3 { grid-template-columns: repeat(3, 1fr); } }
+
+    label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+    input[type="number"], select { width: 100%; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid var(--border); background: #0b1220; color: #e2e8f0; outline: none; }
+    input[type="number"]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(96,165,250,0.15); }
+
+    .help { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    .btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #00111a; font-weight: 700; border: 0; padding: 12px 16px; border-radius: 14px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px;
+      background: #0a1325; border: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+
+    .result { font-size: 36px; font-weight: 800; letter-spacing: 0.5px; }
+    .muted { color: var(--muted); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+
+    .list { list-style: none; padding: 0; margin: 12px 0 0; }
+    .list li { padding: 8px 0; border-bottom: 1px dashed var(--border); }
+
+    .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
+    .size-badge { font-weight: 700; letter-spacing: 0.4px; }
+    .hint { font-size: 12px; color: var(--muted); }
+    .tag { display: inline-block; border:1px solid var(--border); padding: 4px 8px; border-radius: 999px; font-size: 12px; color: var(--muted);} 
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Extrusion Die Cost Estimator</h1>
+    <p>Budgetary estimates for profile extrusion tooling using a simple parametric model.</p>
+  </header>
+  <div class="container">
+    <div class="grid">
+      <!-- Inputs -->
+      <section class="card" aria-labelledby="inputsTitle">
+        <h2 id="inputsTitle">Input — Part & Tooling Parameters</h2>
+
+        <div class="row cols-2">
+          <div>
+            <label for="width">Max Width (in)</label>
+            <input type="number" id="width" min="0" step="0.01" value="3" />
+          </div>
+          <div>
+            <label for="height">Max Height (in)</label>
+            <input type="number" id="height" min="0" step="0.01" value="2" />
+          </div>
+        </div>
+
+        <div class="row cols-2">
+          <div>
+            <label for="complexity">Complexity</label>
+            <select id="complexity">
+              <option value="1">1 — Simple solid (no tight corners)</option>
+              <option value="2">2 — Solid with ribs/fins</option>
+              <option value="3">3 — One hollow / many thin ribs</option>
+              <option value="4">4 — Multi-hollow / asymmetric webs</option>
+              <option value="5">5 — Highly intricate multi-chamber</option>
+            </select>
+            <div class="help">Pick the option closest to your cross-section.</div>
+          </div>
+          <div>
+            <label for="tolerance">Tolerance / Finish</label>
+            <select id="tolerance">
+              <option value="1.0">Standard (±0.5–1.0 mm)</option>
+              <option value="1.25">Tight (±0.25–0.5 mm or cosmetic)</option>
+              <option value="1.5">Very tight (≤±0.25 mm / optical)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row cols-2">
+          <div>
+            <label for="resin">Resin / Wear Factor</label>
+            <select id="resin">
+              <option value="1.0">PE / PP / PS (baseline)</option>
+              <option value="1.2" selected>PVC (rigid or flexible)</option>
+              <option value="1.4">Glass-filled PA / PVDF / others</option>
+            </select>
+          </div>
+          <div>
+            <label for="scope">Tooling Scope</label>
+            <select id="scope">
+              <option value="1.0">Die only</option>
+              <option value="1.8" selected>Die + 1 vacuum calibrator</option>
+              <option value="3.0">Full package (basic)</option>
+              <option value="3.6">Full package (richer)</option>
+            </select>
+          </div>
+        </div>
+
+        <details>
+          <summary class="pill" style="margin:8px 0 12px;">Advanced: Equivalent Perimeter (P<sub>e</sub>)</summary>
+          <div class="row cols-3">
+            <div>
+              <label for="hollows"># of Hollows</label>
+              <input type="number" id="hollows" min="0" step="1" value="0" />
+            </div>
+            <div>
+              <label for="avgInternal">Avg. Internal Perimeter per Hollow (in)</label>
+              <input type="number" id="avgInternal" min="0" step="0.01" value="0" />
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <div class="hint">P<sub>e</sub> ≈ outside perimeter + 0.5×(sum of internal perimeters)</div>
+            </div>
+          </div>
+        </details>
+
+        <button id="estimateBtn" class="btn">Estimate Cost</button>
+      </section>
+
+      <!-- Results -->
+      <section class="card" aria-labelledby="resultsTitle">
+        <h2 id="resultsTitle">Estimate</h2>
+        <div id="summary" style="margin-bottom: 14px;">
+          <span class="tag">Ready when you are—enter values and click Estimate.</span>
+        </div>
+        <div class="result" id="price">$—</div>
+        <div class="muted" id="sizeClass">Size Class: —</div>
+
+        <ul class="list" id="reasons"></ul>
+
+        <div class="footer">
+          <p class="hint">This is a budgetary estimate. For quoting, send the cross-section, resin, tolerance band, and scope to your tooling vendor.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // --- Parametric model constants ---
+    const BASE_BY_SIZE = {
+      small: 4500,
+      medium: 8000,
+      large: 15000,
+    };
+
+    function dollars(n){
+      return n.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    }
+
+    function classifySize(pe_mm){
+      // Size class thresholds (rule of thumb)
+      if (pe_mm <= 150) return 'small';
+      if (pe_mm <= 350) return 'medium';
+      return 'large';
+    }
+
+    function computeEstimate(){
+      const width = parseFloat(document.getElementById('width').value || '0');
+      const height = parseFloat(document.getElementById('height').value || '0');
+      const C = parseFloat(document.getElementById('complexity').value);
+      const T = parseFloat(document.getElementById('tolerance').value);
+      const R = parseFloat(document.getElementById('resin').value);
+      const scope = parseFloat(document.getElementById('scope').value);
+      const hollows = parseInt(document.getElementById('hollows').value || '0', 10);
+      const avgInternal = parseFloat(document.getElementById('avgInternal').value || '0');
+
+      if (width <= 0 || height <= 0) {
+        return { error: 'Enter positive width and height.' };
+      }
+
+      // Equivalent perimeter Pe (inches) → convert to mm
+      const outsidePerimeter = 2 * (width + height);
+      const internalPerimeter = hollows * avgInternal; // user-provided simplification
+      const Pe_in = outsidePerimeter + 0.5 * internalPerimeter;
+      const Pe_mm = Pe_in * 25.4;
+
+      const sizeClass = classifySize(Pe_mm);
+      const base = BASE_BY_SIZE[sizeClass];
+
+      // Die-only formula
+      const complexityFactor = 1 + 0.25 * (C - 1);
+      const dieOnly = base * complexityFactor * T * R;
+
+      // Tooling package
+      const toolingPackage = dieOnly * scope;
+
+      // Reasons / explanation
+      const reasons = [];
+      reasons.push(`Size: Pₑ ≈ ${Pe_in.toFixed(1)} in (${Pe_mm.toFixed(0)} mm) → ${sizeClass.toUpperCase()} base (${dollars(base)})`);
+
+      const cMap = {
+        1: 'Simple solid',
+        2: 'Solid with ribs/fins',
+        3: 'One hollow / many thin ribs',
+        4: 'Multi-hollow / asymmetric webs',
+        5: 'Highly intricate multi-chamber',
+      };
+      reasons.push(`Complexity: C=${C} (${cMap[C]}) → × ${(1 + 0.25 * (C - 1)).toFixed(2)}`);
+
+      const tLabel = (T === 1) ? 'Standard' : (T === 1.25 ? 'Tight' : 'Very tight');
+      reasons.push(`Tolerance/finish: ${tLabel} → × ${T.toFixed(2)}`);
+
+      const resinLabel = (R === 1) ? 'PE/PP/PS' : (R === 1.2 ? 'PVC' : 'Glass-filled/PA/PVDF');
+      reasons.push(`Resin factor: ${resinLabel} → × ${R.toFixed(2)}`);
+
+      const scopeLabel = {
+        1.0: 'Die only',
+        1.8: 'Die + 1 vacuum calibrator',
+        3.0: 'Full package (basic)',
+        3.6: 'Full package (richer)'
+      }[scope];
+      reasons.push(`Scope: ${scopeLabel} → × ${scope.toFixed(2)}`);
+
+      return { width, height, dieOnly, toolingPackage, sizeClass, reasons, scopeLabel };
+    }
+
+    function render(){
+      const summary = document.getElementById('summary');
+      const price = document.getElementById('price');
+      const sizeClass = document.getElementById('sizeClass');
+      const reasonsList = document.getElementById('reasons');
+
+      const result = computeEstimate();
+      reasonsList.innerHTML = '';
+
+      if (result.error){
+        price.textContent = '$—';
+        sizeClass.textContent = 'Size Class: —';
+        summary.innerHTML = `<span class="pill" style="border-color: var(--danger); color: #fecaca;">${result.error}</span>`;
+        return;
+      }
+
+      const { toolingPackage, dieOnly, reasons } = result;
+
+      // Show package price (rounded to nearest $10 for cleaner look)
+      const rounded = Math.round(toolingPackage / 10) * 10;
+      price.textContent = dollars(rounded);
+      sizeClass.innerHTML = `Size Class: <span class="size-badge">${result.sizeClass.toUpperCase()}</span>`;
+
+      summary.innerHTML = `<span class="pill">Die-only: <strong>${dollars(dieOnly)}</strong> &nbsp;|&nbsp; Package: <strong>${dollars(toolingPackage)}</strong></span>`;
+
+      reasons.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r;
+        reasonsList.appendChild(li);
+      });
+    }
+
+    document.getElementById('estimateBtn').addEventListener('click', render);
+
+    // Seed with the example (2" x 3" PVC, simple, standard, 1 calibrator)
+    window.addEventListener('load', render);
+  </script>
+</body>
+</html>
