@@ -3,8 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Extrusion Die Package Estimator</title>
-  <meta name="description" content="Budget estimate for complete extrusion tooling packages using a simple parametric model." />
+  <title>Extrusion Tooling Cost Estimator</title>
   <style>
     :root { --bg:#0f172a; --panel:#111827; --accent:#60a5fa; --accent-2:#34d399; --text:#e5e7eb; --muted:#94a3b8; --border:#1f2937; --card:#0b1220; }
     *{box-sizing:border-box}
@@ -12,216 +11,129 @@
     header{padding:28px 20px 8px;text-align:center}
     header h1{margin:0 0 6px;font-size:28px;letter-spacing:.3px}
     header p{margin:0;color:var(--muted);font-size:14px}
-    .container{max-width:1100px;margin:20px auto 60px;padding:0 16px}
-    .grid{display:grid;grid-template-columns:1fr;gap:16px}
-    @media (min-width:960px){.grid{grid-template-columns:1.1fr .9fr}}
+    .container{max-width:900px;margin:20px auto 60px;padding:0 16px}
     .card{background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));border:1px solid var(--border);border-radius:16px;padding:18px}
-    .card h2{margin:0 0 12px;font-size:18px;color:#fff}
-    .row{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px}
-    @media (min-width:680px){.row.cols-2{grid-template-columns:repeat(2,1fr)}}
-    @media (min-width:680px){.row.cols-3{grid-template-columns:repeat(3,1fr)}}
     label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
     input[type=number],select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0b1220;color:#e2e8f0;outline:none}
-    input[type=number]:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(96,165,250,.15)}
     .controls{display:flex;flex-wrap:wrap;gap:10px}
     .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:999px;background:#0a1325;color:#e2e8f0;font-size:13px}
-    .btn{cursor:pointer;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#00111a;font-weight:700;border:0;padding:12px 16px;border-radius:14px}
-    .result{font-size:36px;font-weight:800;letter-spacing:.5px}
+    .btn{cursor:pointer;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#00111a;font-weight:700;border:0;padding:12px 16px;border-radius:14px;margin-top:10px}
+    .result{font-size:36px;font-weight:800;margin-top:10px}
     .muted{color:var(--muted)}
     .list{list-style:none;padding:0;margin:12px 0 0}
     .list li{padding:8px 0;border-bottom:1px dashed var(--border)}
     .hint{font-size:12px;color:var(--muted)}
-    .size-badge{font-weight:700;letter-spacing:.4px}
-    .tag{display:inline-block;border:1px solid var(--border);padding:4px 8px;border-radius:999px;font-size:12px;color:var(--muted)}
   </style>
 </head>
-<body data-app="die-estimator">
+<body>
   <header>
-    <h1>Extrusion Die Package Estimator</h1>
-    <p>We price the <strong>complete tooling package</strong>. Resin, extrusion type, and prototype/production are recorded for your RFQs (no price impact unless noted).</p>
+    <h1>Extrusion Tooling Cost Estimator</h1>
+    <p>Estimate the cost of a complete extrusion tooling set based on size and complexity.</p>
   </header>
   <div class="container">
-    <div class="grid" id="estimatorRoot" data-estimator-root>
-      <!-- Inputs -->
-      <section class="card" aria-labelledby="inputsTitle">
-        <h2 id="inputsTitle">Input — Part Parameters</h2>
-        <div class="row cols-2">
-          <div>
-            <label for="width">Max Width (in)</label>
-            <input type="number" id="width" min="0" step="0.01" value="3" />
-          </div>
-          <div>
-            <label for="height">Max Height (in)</label>
-            <input type="number" id="height" min="0" step="0.01" value="2" />
-          </div>
-        </div>
+    <section class="card">
+      <h2>Inputs</h2>
+      <label for="width">Max Width (in)</label>
+      <input type="number" id="width" min="0" step="0.01" value="3">
 
-        <div class="row cols-2">
-          <div>
-            <label for="resin">Resin (record only)</label>
-            <select id="resin">
-              <option>PE / PP / PS</option>
-              <option selected>PVC</option>
-              <option>PMMA / Acrylic</option>
-              <option>PA (glass-filled)</option>
-              <option>PVDF</option>
-              <option>Other</option>
-            </select>
-            <div class="hint">Captured on the summary; does not change cost.</div>
-          </div>
-          <div>
-            <label for="extType">Extrusion Type (record only)</label>
-            <select id="extType">
-              <option selected>Profile</option>
-              <option>Tube</option>
-            </select>
-            <div class="hint">Does not affect price.</div>
-          </div>
-        </div>
+      <label for="height">Max Height (in)</label>
+      <input type="number" id="height" min="0" step="0.01" value="2">
 
-        <div class="row">
-          <label>Complexity (affects price)</label>
-          <div class="controls">
-            <label class="chip"><input type="radio" name="process" value="mono" checked> Mono</label>
-            <label class="chip"><input type="radio" name="process" value="coex"> Coex</label>
-            <label class="chip"><input type="checkbox" id="hollow"> Hollow</label>
-            <label class="chip"><input type="checkbox" id="grain"> Grain</label>
-          </div>
-          <div class="hint">Mono vs Coex (pick one). Hollow/grain can be toggled. Grain is recorded only.</div>
-        </div>
+      <label for="resin">Resin (record only)</label>
+      <select id="resin">
+        <option selected>PVC</option>
+        <option>PE / PP / PS</option>
+        <option>PMMA / Acrylic</option>
+        <option>PA (glass-filled)</option>
+        <option>PVDF</option>
+        <option>Other</option>
+      </select>
 
-        <div class="row">
-          <label>Run Type (record only)</label>
-          <div class="controls">
-            <label class="chip"><input type="radio" name="runType" value="Production" checked> Production</label>
-            <label class="chip"><input type="radio" name="runType" value="Prototype"> Prototype</label>
-          </div>
-        </div>
+      <label>Extrusion Type</label>
+      <select id="extType">
+        <option selected>Profile</option>
+        <option>Tube</option>
+      </select>
 
-        <details>
-          <summary class="chip" style="cursor:pointer;">Advanced: Equivalent Perimeter (P<sub>e</sub>)</summary>
-          <div class="row cols-3">
-            <div>
-              <label for="hollows"># of Hollows</label>
-              <input type="number" id="hollows" min="0" step="1" value="0" />
-            </div>
-            <div>
-              <label for="avgInternal">Avg. Internal Perimeter per Hollow (in)</label>
-              <input type="number" id="avgInternal" min="0" step="0.01" value="0" />
-            </div>
-            <div class="hint">P<sub>e</sub> ≈ 2×(W+H) + 0.5×(sum of internal perimeters)</div>
-          </div>
-        </details>
+      <div class="hint" style="margin-top:8px;">Complexity options:</div>
+      <div class="controls">
+        <label class="chip"><input type="radio" name="process" value="mono" checked> Mono</label>
+        <label class="chip"><input type="radio" name="process" value="coex"> Coex</label>
+        <label class="chip"><input type="checkbox" id="hollow"> Hollow</label>
+        <label class="chip"><input type="checkbox" id="grain"> Grain</label>
+      </div>
 
-        <button id="estimateBtn" class="btn">Estimate Package Price</button>
-      </section>
+      <label style="margin-top:10px;">Run Type</label>
+      <div class="controls">
+        <label class="chip"><input type="radio" name="runType" value="Production" checked> Production</label>
+        <label class="chip"><input type="radio" name="runType" value="Prototype"> Prototype</label>
+      </div>
 
-      <!-- Results -->
-      <section class="card" aria-labelledby="resultsTitle">
-        <h2 id="resultsTitle">Estimate</h2>
-        <div id="summary" style="margin-bottom:14px;">
-          <span class="tag">Enter values and click Estimate.</span>
-        </div>
-        <div class="result" id="price">$—</div>
-        <div class="muted" id="sizeClass">Size Class: —</div>
-        <ul class="list" id="reasons"></ul>
-        <p class="hint">Budgetary only. For quoting, send cross-section, resin, extrusion type, and run type.</p>
-      </section>
-    </div>
+      <button class="btn" id="estimateBtn">Estimate Cost</button>
+    </section>
+
+    <section class="card">
+      <h2>Estimate</h2>
+      <div class="result" id="price">$—</div>
+      <div class="muted" id="sizeClass">Size Class: —</div>
+      <ul class="list" id="reasons"></ul>
+    </section>
   </div>
 
   <script>
-    // --- Single-instance guard: prevent double init/render if file is included twice ---
-    if (!window.__DIE_ESTIMATOR_INITED__) {
-      window.__DIE_ESTIMATOR_INITED__ = true;
+    if (!window.__TOOL_ESTIMATOR_INITED__) {
+      window.__TOOL_ESTIMATOR_INITED__ = true;
 
-      // Remove duplicate roots if present (keep the first)
-      const roots = document.querySelectorAll('[data-estimator-root]');
-      roots.forEach((el, idx) => { if (idx > 0) el.remove(); });
+      const BASE_BY_SIZE = { small: 8000, medium: 10000, large: 12000 };
 
-      // --- Company-tunable constants ---
-      const BASE_BY_SIZE = { small: 4500, medium: 8000, large: 15000 };
-      const PACKAGE_MULTIPLIER = 3.0; // We sell the whole package
-
-      function dollars(n){ return n.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}); }
-      function classifySize(pe_mm){ if (pe_mm <= 150) return 'small'; if (pe_mm <= 350) return 'medium'; return 'large'; }
-      const $ = (sel) => document.querySelector(sel);
-      const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-      const getRadioValue = (name) => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : null; };
+      const dollars = n => n.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0});
+      const classifySize = mm => mm <= 150 ? 'small' : mm <= 350 ? 'medium' : 'large';
+      const getRadioValue = name => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : null; };
 
       function computeEstimate(){
-        const width = parseFloat($('#width').value || '0');
-        const height = parseFloat($('#height').value || '0');
-        const resin = $('#resin').value; // record only
-        const extType = $('#extType').value; // record only
-        const process = getRadioValue('process'); // mono | coex
-        const hollowChecked = $('#hollow').checked;
-        const grainChecked = $('#grain').checked; // record only
-        const runType = getRadioValue('runType'); // Production | Prototype (record only)
-        const hollows = parseInt($('#hollows').value || '0', 10);
-        const avgInternal = parseFloat($('#avgInternal').value || '0');
+        const width = parseFloat(document.getElementById('width').value||'0');
+        const height = parseFloat(document.getElementById('height').value||'0');
+        const resin = document.getElementById('resin').value;
+        const extType = document.getElementById('extType').value;
+        const process = getRadioValue('process');
+        const hollow = document.getElementById('hollow').checked;
+        const grain = document.getElementById('grain').checked;
+        const runType = getRadioValue('runType');
+        if(width<=0||height<=0) return {error:'Enter positive width and height.'};
 
-        if (width <= 0 || height <= 0) return { error: 'Enter positive width and height.' };
+        const Pe_in = 2*(width+height);
+        const Pe_mm = Pe_in*25.4;
+        const size = classifySize(Pe_mm);
+        const base = BASE_BY_SIZE[size];
 
-        // Equivalent perimeter
-        const outsidePerimeter = 2 * (width + height);
-        const internalPerimeter = hollows * avgInternal; // simplification
-        const Pe_in = outsidePerimeter + 0.5 * internalPerimeter;
-        const Pe_mm = Pe_in * 25.4;
+        let C=1;
+        if(process==='coex')C+=1;
+        if(hollow)C+=2;
+        if(C>5)C=5;
+        const complexityFactor=1+0.25*(C-1);
+        const price = base*complexityFactor;
 
-        const sizeClass = classifySize(Pe_mm);
-        const base = BASE_BY_SIZE[sizeClass];
+        const reasons=[];
+        reasons.push(`Equivalent Perimeter: ${Pe_in.toFixed(1)} in (${Pe_mm.toFixed(0)} mm) → ${size.toUpperCase()} base (${dollars(base)})`);
+        reasons.push(`Complexity: ${process==='coex'?'Coex':'Mono'}${hollow?', Hollow':''} → ×${complexityFactor.toFixed(2)}`);
+        reasons.push(`Recorded — Resin: ${resin}; Extrusion Type: ${extType}; Run: ${runType}${grain?'; Surface: Grain':''}`);
 
-        // Complexity mapping
-        let C = 1;
-        if (process === 'coex') C += 1;
-        if (hollowChecked) C += 2;
-        if (C > 5) C = 5;
-        const complexityFactor = 1 + 0.25 * (C - 1);
-
-        const dieOnly = base * complexityFactor;
-        const packagePrice = dieOnly * PACKAGE_MULTIPLIER;
-
-        const reasons = [];
-        reasons.push(`Size: Pₑ ≈ ${Pe_in.toFixed(1)} in (${Pe_mm.toFixed(0)} mm) → ${sizeClass.toUpperCase()} base (${dollars(base)})`);
-        reasons.push(`Complexity: C=${C} (${process === 'coex' ? 'Coex' : 'Mono'}${hollowChecked ? ', Hollow' : ''}) → × ${complexityFactor.toFixed(2)}`);
-        reasons.push(`Company package standard → × ${PACKAGE_MULTIPLIER.toFixed(2)} (complete tooling package)`);
-        reasons.push(`Recorded — Resin: ${resin}; Extrusion Type: ${extType}; Run: ${runType}${grainChecked ? '; Surface: Grain' : ''}`);
-
-        return { packagePrice, dieOnly, sizeClass, reasons };
+        return {price,size,reasons};
       }
 
       function render(){
-        const summary = $('#summary');
-        const price = $('#price');
-        const sizeClass = $('#sizeClass');
-        const reasonsList = $('#reasons');
-
-        const result = computeEstimate();
-        reasonsList.innerHTML = '';
-
-        if (result.error){
-          price.textContent = '$—';
-          sizeClass.textContent = 'Size Class: —';
-          summary.innerHTML = `<span class="tag" style="border-color:#ef4444;color:#fecaca;">${result.error}</span>`;
-          return;
-        }
-
-        const rounded = Math.round(result.packagePrice / 10) * 10;
-        price.textContent = dollars(rounded);
-        sizeClass.innerHTML = `Size Class: <span class="size-badge">${result.sizeClass.toUpperCase()}</span>`;
-        summary.innerHTML = `<span class="tag">Complete package price</span>`;
-
-        result.reasons.forEach(r=>{ const li=document.createElement('li'); li.textContent=r; reasonsList.appendChild(li); });
+        const result=computeEstimate();
+        const price=document.getElementById('price');
+        const sizeClass=document.getElementById('sizeClass');
+        const list=document.getElementById('reasons');
+        list.innerHTML='';
+        if(result.error){price.textContent='$—';sizeClass.textContent='Size Class: —';return;}
+        price.textContent=dollars(Math.round(result.price/10)*10);
+        sizeClass.textContent='Size Class: '+result.size.toUpperCase();
+        result.reasons.forEach(r=>{const li=document.createElement('li');li.textContent=r;list.appendChild(li);});
       }
 
-      // Wire once
-      $('#estimateBtn').addEventListener('click', render, { once: false });
-
-      // Remove any previously-added listeners if this script tag is duplicated by the host (belt & suspenders)
-      // We use an ID on the button and only attach this one handler; the guard above prevents re-run.
-
-      // First render
+      document.getElementById('estimateBtn').addEventListener('click',render);
       render();
     }
   </script>
